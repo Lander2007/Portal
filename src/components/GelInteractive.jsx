@@ -1,8 +1,9 @@
 import { useRef, useState, useCallback, useEffect } from "react"
+import { JumpBoosterIcon, SpeedBoosterIcon, ComboIcon, ResetIcon, StatusDot } from "./Icons"
 
 const GEL_BLUE = "#1E90FF"
 const GEL_ORANGE = "#FF7A1A"
-const GEL_WHITE = "#E6F0FA"
+const GEL_PURPLE = "#A855F7"
 
 // Sound synthesis using Web Audio API
 function playSound(type) {
@@ -13,7 +14,6 @@ function playSound(type) {
     const now = ctx.currentTime
 
     if (type === "bounce") {
-      // Bouncy elastic spring sound
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.type = "sine"
@@ -27,7 +27,6 @@ function playSound(type) {
       osc.start(now)
       osc.stop(now + 0.32)
     } else if (type === "speed") {
-      // Supersonic whoosh sound
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.type = "sawtooth"
@@ -40,16 +39,15 @@ function playSound(type) {
       osc.start(now)
       osc.stop(now + 0.42)
     } else if (type === "success") {
-      // Aperture success chime
       const osc1 = ctx.createOscillator()
       const osc2 = ctx.createOscillator()
       const gain = ctx.createGain()
       osc1.type = "triangle"
       osc2.type = "sine"
-      osc1.frequency.setValueAtTime(523.25, now) // C5
-      osc1.frequency.setValueAtTime(659.25, now + 0.1) // E5
-      osc1.frequency.setValueAtTime(783.99, now + 0.2) // G5
-      osc1.frequency.setValueAtTime(1046.5, now + 0.3) // C6
+      osc1.frequency.setValueAtTime(523.25, now)
+      osc1.frequency.setValueAtTime(659.25, now + 0.1)
+      osc1.frequency.setValueAtTime(783.99, now + 0.2)
+      osc1.frequency.setValueAtTime(1046.5, now + 0.3)
       gain.gain.setValueAtTime(0.25, now)
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6)
       osc1.connect(gain)
@@ -59,7 +57,7 @@ function playSound(type) {
       osc1.stop(now + 0.65)
     }
   } catch {
-    // Audio context may be blocked by browser autoplay policy until interaction
+    // Audio context may be blocked by browser policy until interaction
   }
 }
 
@@ -114,21 +112,18 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
     s.comboStage = 0
 
     if (currentMode === "repulsion") {
-      // Repulsion: place subject above the drop platform
       s.x = 100
       s.y = 70
       s.vx = 1.2
       s.vy = 0
       s.statusText = "DROP FROM HEIGHT TO TRIGGER SUPER JUMP"
     } else if (currentMode === "propulsion") {
-      // Propulsion: place subject at runway start
       s.x = 60
       s.y = 210
       s.vx = 0
       s.vy = 0
       s.statusText = "PRESS 'IGNITE SPEED RUN' FOR ZERO-FRICTION SPRINT"
     } else {
-      // Combo stunt
       s.x = 50
       s.y = 210
       s.vx = 0
@@ -137,13 +132,11 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
     }
   }, [])
 
-  // Trigger demo action
   const triggerAction = useCallback(() => {
     const s = stateRef.current
     onInteraction?.()
 
     if (s.mode === "repulsion") {
-      // Drop high from apex
       s.x = 220
       s.y = 40
       s.vx = 1.5
@@ -151,7 +144,6 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
       s.targetHit = false
       s.statusText = "FREEFALLING TOWARDS BLUE REPULSION GEL..."
     } else if (s.mode === "propulsion") {
-      // Supersonic boost
       s.x = 60
       s.y = 210
       s.vx = 16.5
@@ -160,7 +152,6 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
       s.statusText = "SUPERSONIC ACCELERATION ENGAGED (µ = 0.000)"
       if (soundEnabled.current) playSound("speed")
     } else {
-      // Combo launch
       s.x = 50
       s.y = 210
       s.vx = 15.0
@@ -190,7 +181,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
 
       ctx.clearRect(0, 0, W, H)
 
-      // ─── Draw Aperture Facility Background ────────────────────────────────
+      // ─── Facility Background ───
       ctx.fillStyle = "#0A0A0E"
       ctx.fillRect(0, 0, W, H)
 
@@ -210,11 +201,11 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.stroke()
       }
 
-      // Hazard stripes on boundaries
+      // Hazard boundary
       ctx.fillStyle = "rgba(255, 122, 26, 0.08)"
       ctx.fillRect(0, H - 12, W, 12)
 
-      // ─── MODE 1: REPULSION GEL (SUPER JUMP BOOSTER) ───────────────────────
+      // ─── MODE 1: REPULSION GEL ───
       if (s.mode === "repulsion") {
         const floorY = 240
         const gelLeft = 140
@@ -254,23 +245,22 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.lineWidth = 2
         ctx.stroke()
 
-        // Goal Indicator Beacon
+        // Goal Indicator
         ctx.font = "9px monospace"
         ctx.fillStyle = s.targetHit ? "#FFFFFF" : "var(--concrete-gray)"
         ctx.fillText(
-          s.targetHit ? "✓ CATWALK REACHED" : "ELEVATED GOAL [18.4m]",
+          s.targetHit ? "STATUS: ELEVATED LEDGE REACHED" : "ELEVATED GOAL [18.4M]",
           highPlatform.x + 10,
           highPlatform.y - 24,
         )
 
-        // ─── Blue Repulsion Gel Pool (Animated fluid surface) ───
+        // Blue Repulsion Gel Pool
         const gelGrad = ctx.createLinearGradient(0, floorY, 0, H)
         gelGrad.addColorStop(0, GEL_BLUE)
         gelGrad.addColorStop(1, "rgba(15, 74, 128, 0.4)")
         ctx.fillStyle = gelGrad
         ctx.beginPath()
         ctx.moveTo(gelLeft, floorY)
-        // Gel wave animation
         const waveOffset = Math.sin(now * 0.006) * 3
         ctx.quadraticCurveTo(
           (gelLeft + gelRight) / 2,
@@ -283,7 +273,6 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.closePath()
         ctx.fill()
 
-        // Gel Surface Glow
         ctx.shadowColor = GEL_BLUE
         ctx.shadowBlur = 16
         ctx.strokeStyle = GEL_BLUE
@@ -299,18 +288,17 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.stroke()
         ctx.shadowBlur = 0
 
-        // Gel Label
+        // Label
         ctx.font = "10px monospace"
         ctx.fillStyle = GEL_BLUE
-        ctx.fillText("▲ REPULSION GEL [SUPER JUMP ZONE] ▲", gelLeft + 15, floorY + 28)
+        ctx.fillText("REPULSION GEL // VERTICAL JUMP ZONE", gelLeft + 15, floorY + 28)
 
-        // ─── Physics ───
+        // Physics
         if (!s.isDragging) {
-          s.vy += 28.0 * dt // Gravity
+          s.vy += 28.0 * dt
           s.x += s.vx
           s.y += s.vy
 
-          // Left/Right bounds
           if (s.x < 20) {
             s.x = 20
             s.vx = Math.abs(s.vx) * 0.8
@@ -320,7 +308,6 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
             s.vx = -Math.abs(s.vx) * 0.8
           }
 
-          // Catwalk landing
           if (
             s.x >= highPlatform.x &&
             s.x <= highPlatform.x + highPlatform.w &&
@@ -333,27 +320,24 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
             s.vx *= 0.6
             if (!s.targetHit) {
               s.targetHit = true
-              s.statusText = "✓ SUPER JUMP SUCCESSFUL — HIGH LEDGE CLEARED!"
+              s.statusText = "SUPER JUMP SUCCESSFUL — HIGH LEDGE CLEARED"
               if (soundEnabled.current) playSound("success")
             }
           }
 
-          // Floor / Gel contact
           if (s.y >= floorY - 18) {
             s.y = floorY - 18
             const isOnGel = s.x >= gelLeft && s.x <= gelRight
 
             if (isOnGel) {
-              // 🚀 SUPER BOUNCE (Repulsion Jump Boost)
               const inboundSpeed = Math.abs(s.vy)
-              s.vy = -Math.max(16.5, inboundSpeed * 1.35) // Super bounce multiplier
-              s.vx = (highPlatform.x + 40 - s.x) * 0.022 // Trajectory towards catwalk
+              s.vy = -Math.max(16.5, inboundSpeed * 1.35)
+              s.vx = (highPlatform.x + 40 - s.x) * 0.022
               s.jumpCount++
-              s.statusText = `⚡ SUPER JUMP BOOST FIRED! VELOCITY: ${Math.abs(s.vy * 3.5).toFixed(1)} m/s`
+              s.statusText = `SUPER JUMP BOOST FIRED // VELOCITY: ${Math.abs(s.vy * 3.5).toFixed(1)} M/S`
 
               if (soundEnabled.current) playSound("bounce")
 
-              // Spawn shockwave ring
               s.shockwaves.push({
                 x: s.x,
                 y: floorY,
@@ -363,7 +347,6 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
                 color: GEL_BLUE,
               })
 
-              // Spawn splash particles
               for (let i = 0; i < 18; i++) {
                 s.particles.push({
                   x: s.x + (Math.random() - 0.5) * 20,
@@ -377,7 +360,6 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
                 })
               }
             } else {
-              // Normal floor damping
               s.vy = -Math.abs(s.vy) * 0.25
               s.vx *= 0.8
               if (Math.abs(s.vy) < 1.0) s.vy = 0
@@ -386,7 +368,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         }
       }
 
-      // ─── MODE 2: PROPULSION GEL (SPEED BOOSTER / ZERO FRICTION) ───────────
+      // ─── MODE 2: PROPULSION GEL ───
       else if (s.mode === "propulsion") {
         const trackY = 220
         const startX = 20
@@ -398,22 +380,20 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         const landEndX = W - 20
         const speedGateX = 540
 
-        // Start platform
         ctx.fillStyle = "#16161D"
         ctx.fillRect(startX, trackY, gelStartX - startX, 40)
 
-        // Hazard Pit (Acid gap)
+        // Hazard Pit
         ctx.fillStyle = "rgba(180, 40, 20, 0.2)"
         ctx.fillRect(pitStartX, trackY + 8, pitEndX - pitStartX, 50)
         ctx.strokeStyle = "rgba(255, 60, 40, 0.4)"
         ctx.strokeRect(pitStartX, trackY + 8, pitEndX - pitStartX, 50)
 
-        // Spikes / Hazard Warning
         ctx.font = "9px monospace"
         ctx.fillStyle = "#FF4444"
-        ctx.fillText("▲ HAZARD GAP (42.0m) ▲", pitStartX + 12, trackY + 36)
+        ctx.fillText("HAZARD PIT // SPAN: 42.0M", pitStartX + 12, trackY + 36)
 
-        // Far landing platform
+        // Landing platform
         ctx.fillStyle = "#1E1E28"
         ctx.fillRect(landStartX, trackY, landEndX - landStartX, 40)
         ctx.strokeStyle = "var(--portal-orange)"
@@ -431,19 +411,18 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.font = "9px monospace"
         ctx.fillStyle = s.targetHit ? "#FFFFFF" : "var(--concrete-gray)"
         ctx.fillText(
-          s.targetHit ? "✓ SPEED GATE CLEARED" : "VELOCITY GATE [120+ km/h]",
+          s.targetHit ? "STATUS: VELOCITY GATE CLEARED" : "VELOCITY GATE [120+ KM/H]",
           speedGateX - 60,
           trackY - 60,
         )
 
-        // ─── Orange Propulsion Gel Strip ───
+        // Orange Propulsion Gel Strip
         const gelGrad = ctx.createLinearGradient(gelStartX, 0, gelEndX, 0)
         gelGrad.addColorStop(0, "rgba(255, 122, 26, 0.4)")
         gelGrad.addColorStop(1, GEL_ORANGE)
         ctx.fillStyle = gelGrad
         ctx.fillRect(gelStartX, trackY, gelEndX - gelStartX, 10)
 
-        // Flowing Propulsion Chevron Arrows
         const flowOffset = (now * 0.2) % 30
         ctx.strokeStyle = "#FFF2E0"
         ctx.lineWidth = 2
@@ -455,7 +434,6 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
           ctx.stroke()
         }
 
-        // Glow line
         ctx.shadowColor = GEL_ORANGE
         ctx.shadowBlur = 16
         ctx.strokeStyle = GEL_ORANGE
@@ -463,23 +441,19 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.strokeRect(gelStartX, trackY, gelEndX - gelStartX, 10)
         ctx.shadowBlur = 0
 
-        // Track Label
         ctx.font = "10px monospace"
         ctx.fillStyle = GEL_ORANGE
-        ctx.fillText("▶▶ PROPULSION GEL [ZERO FRICTION SPEED RUNWAY] ▶▶", gelStartX + 10, trackY + 28)
+        ctx.fillText("PROPULSION GEL // ZERO-FRICTION RUNWAY", gelStartX + 10, trackY + 28)
 
-        // ─── Physics ───
         if (!s.isDragging) {
           const isOnOrangeGel = s.x >= gelStartX && s.x <= gelEndX && s.y >= trackY - 24
 
           if (isOnOrangeGel) {
-            // ⚡ Zero friction + forward thrust acceleration
             s.vx += 32.0 * dt
-            s.vx = Math.min(s.vx, 22.0) // Top speed cap
+            s.vx = Math.min(s.vx, 22.0)
             s.vy = 0
             s.y = trackY - 18
 
-            // Speed lines & sparks
             if (Math.random() < 0.6) {
               s.particles.push({
                 x: s.x,
@@ -493,28 +467,24 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
               })
             }
           } else if (s.x > gelEndX && s.x < landStartX) {
-            // In the air over the hazard pit!
-            s.vy += 22.0 * dt // Gravity
+            s.vy += 22.0 * dt
           } else if (s.x >= landStartX) {
-            // Landed on far side
             s.vy = 0
             s.y = trackY - 18
-            s.vx *= 0.94 // Natural deceleration
+            s.vx *= 0.94
 
             if (s.x >= speedGateX - 10 && !s.targetHit) {
               s.targetHit = true
-              s.statusText = "✓ SUPERSONIC SPEED GAP CLEARED — TARGET ACHIEVED!"
+              s.statusText = "SUPERSONIC SPEED GAP CLEARED // TARGET ACHIEVED"
               if (soundEnabled.current) playSound("success")
             }
           } else {
-            // Normal track
             s.vx *= 0.92
           }
 
           s.x += s.vx
           s.y += s.vy
 
-          // Fall into hazard pit reset
           if (s.y > trackY + 30) {
             s.x = 60
             s.y = trackY - 18
@@ -525,7 +495,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         }
       }
 
-      // ─── MODE 3: COMBO STUNT (SPEED RUN + BOUNCE RAMP) ───────────────────
+      // ─── MODE 3: COMBO STUNT ───
       else {
         const trackY = 220
         const orangeStartX = 40
@@ -534,11 +504,10 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         const catwalkX = 460
         const catwalkY = 70
 
-        // Orange runway
         ctx.fillStyle = GEL_ORANGE
         ctx.fillRect(orangeStartX, trackY, orangeEndX - orangeStartX, 8)
 
-        // Angled Blue Gel Jump Ramp
+        // Angled Blue Ramp
         ctx.fillStyle = GEL_BLUE
         ctx.beginPath()
         ctx.moveTo(blueRampX, trackY)
@@ -550,7 +519,6 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.lineWidth = 2
         ctx.stroke()
 
-        // High Exit Catwalk
         ctx.fillStyle = "#1E1E28"
         ctx.fillRect(catwalkX, catwalkY, 120, 12)
         ctx.strokeStyle = "var(--portal-blue)"
@@ -559,24 +527,21 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.font = "9px monospace"
         ctx.fillStyle = s.targetHit ? "#FFFFFF" : "var(--concrete-gray)"
         ctx.fillText(
-          s.targetHit ? "✓ COMBO STUNT COMPLETE!" : "HIGH APERTURE EXIT [24.0m]",
+          s.targetHit ? "STATUS: COMBO STUNT COMPLETE" : "HIGH APERTURE EXIT [24.0M]",
           catwalkX,
           catwalkY - 12,
         )
 
-        // Physics
         if (!s.isDragging) {
           if (s.x >= orangeStartX && s.x <= orangeEndX) {
-            // Accelerate on orange
             s.vx += 30.0 * dt
             s.vx = Math.min(s.vx, 20.0)
             s.y = trackY - 18
           } else if (s.x >= blueRampX && s.x <= blueRampX + 45 && s.y >= trackY - 35) {
-            // 🚀 Hit Blue Ramp -> Launch into high parabola
             s.vy = -17.5
             s.vx = 11.0
             if (soundEnabled.current) playSound("bounce")
-            s.statusText = "MOMENTUM REDIRECTED — LAUNCHING SKYWARD!"
+            s.statusText = "MOMENTUM REDIRECTED — LAUNCHING SKYWARD"
           } else {
             s.vy += 22.0 * dt
           }
@@ -584,7 +549,6 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
           s.x += s.vx
           s.y += s.vy
 
-          // Land on catwalk
           if (
             s.x >= catwalkX &&
             s.x <= catwalkX + 120 &&
@@ -597,12 +561,11 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
             s.vx *= 0.6
             if (!s.targetHit) {
               s.targetHit = true
-              s.statusText = "✓ PERFECT MOMENTUM CONVERSION!"
+              s.statusText = "PERFECT MOMENTUM CONVERSION ACHIEVED"
               if (soundEnabled.current) playSound("success")
             }
           }
 
-          // Ground bounce
           if (s.y > trackY + 40) {
             s.x = 50
             s.y = trackY - 18
@@ -612,7 +575,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         }
       }
 
-      // ─── Render Shockwaves ────────────────────────────────────────────────
+      // ─── Render Shockwaves ───
       for (let i = s.shockwaves.length - 1; i >= 0; i--) {
         const sw = s.shockwaves[i]
         sw.r += (sw.maxR - sw.r) * 0.15
@@ -627,7 +590,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         if (sw.alpha < 0.05) s.shockwaves.splice(i, 1)
       }
 
-      // ─── Render Particles ─────────────────────────────────────────────────
+      // ─── Render Particles ───
       for (let i = s.particles.length - 1; i >= 0; i--) {
         const p = s.particles[i]
         p.x += p.vx
@@ -643,7 +606,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         if (p.alpha <= 0) s.particles.splice(i, 1)
       }
 
-      // ─── Render Speed Lines (When traveling fast) ─────────────────────────
+      // ─── Render Speed Lines ───
       const currentSpeed = Math.sqrt(s.vx * s.vx + s.vy * s.vy)
       if (currentSpeed > 6.0) {
         ctx.strokeStyle = s.mode === "propulsion" ? GEL_ORANGE : GEL_BLUE
@@ -660,44 +623,41 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.globalAlpha = 1
       }
 
-      // ─── Render Aperture Test Subject ─────────────────────────────────────
+      // ─── Render Aperture Test Subject ───
       const bodyColor = s.mode === "propulsion" ? GEL_ORANGE : GEL_BLUE
       const posX = s.x
       const posY = s.y
 
-      // Subject glow
       ctx.shadowColor = bodyColor
       ctx.shadowBlur = 12
       ctx.fillStyle = bodyColor
       ctx.beginPath()
-      ctx.arc(posX, posY - 6, 8, 0, Math.PI * 2) // Head
+      ctx.arc(posX, posY - 6, 8, 0, Math.PI * 2)
       ctx.fill()
       ctx.shadowBlur = 0
 
-      // Subject Torso & Limbs
       ctx.strokeStyle = "#FFFFFF"
       ctx.lineWidth = 2.5
       ctx.beginPath()
       ctx.moveTo(posX, posY + 2)
-      ctx.lineTo(posX, posY + 16) // Torso
+      ctx.lineTo(posX, posY + 16)
 
-      // Arms & Legs animation
       const legAnim = Math.sin(now * 0.03 * currentSpeed) * 8
       ctx.moveTo(posX, posY + 16)
-      ctx.lineTo(posX - 6 + legAnim, posY + 28) // Left leg
+      ctx.lineTo(posX - 6 + legAnim, posY + 28)
       ctx.moveTo(posX, posY + 16)
-      ctx.lineTo(posX + 6 - legAnim, posY + 28) // Right leg
+      ctx.lineTo(posX + 6 - legAnim, posY + 28)
 
       ctx.moveTo(posX, posY + 6)
-      ctx.lineTo(posX - 10 - legAnim, posY + 14) // Left arm
+      ctx.lineTo(posX - 10 - legAnim, posY + 14)
       ctx.moveTo(posX, posY + 6)
-      ctx.lineTo(posX + 10 + legAnim, posY + 14) // Right arm
+      ctx.lineTo(posX + 10 + legAnim, posY + 14)
       ctx.stroke()
 
-      // Update Telemetry
+      // Telemetry
       setTelemetry({
-        velocity: currentSpeed * 3.6, // km/h
-        altitude: Math.max(0, (240 - posY) * 0.1), // meters
+        velocity: currentSpeed * 3.6,
+        altitude: Math.max(0, (240 - posY) * 0.1),
         friction: s.mode === "propulsion" ? 0.0 : 0.85,
         bounceFactor: s.mode === "repulsion" ? 3.2 : 0.3,
         status: s.statusText,
@@ -711,17 +671,14 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
     return () => cancelAnimationFrame(animRef.current)
   }, [mode])
 
-  // Mouse / Touch Drag to fling subject
+  // Drag & Fling
   const onPointerDown = (e) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
-    const clickX = e.clientX - rect.left
-    const clickY = e.clientY - rect.top
-
     stateRef.current.isDragging = true
-    stateRef.current.x = clickX
-    stateRef.current.y = clickY
+    stateRef.current.x = e.clientX - rect.left
+    stateRef.current.y = e.clientY - rect.top
     stateRef.current.vx = 0
     stateRef.current.vy = 0
     stateRef.current.statusText = "DRAGGING SUBJECT — RELEASE TO LAUNCH"
@@ -753,7 +710,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         borderRadius: "4px",
       }}
     >
-      {/* Simulation Telemetry HUD */}
+      {/* Telemetry HUD */}
       <div
         className="flex items-center justify-between px-4 py-2 border-b flex-wrap gap-2"
         style={{
@@ -764,14 +721,15 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         }}
       >
         <div className="flex items-center gap-4">
-          <span style={{ color: mode === "repulsion" ? GEL_BLUE : GEL_ORANGE }}>
-            ● {mode === "repulsion" ? "REPULSION GEL (JUMP BOOSTER)" : mode === "propulsion" ? "PROPULSION GEL (SPEED BOOSTER)" : "COMBO STUNT"}
+          <span className="inline-flex items-center gap-1.5" style={{ color: mode === "repulsion" ? GEL_BLUE : mode === "propulsion" ? GEL_ORANGE : GEL_PURPLE }}>
+            <StatusDot size={6} color={mode === "repulsion" ? GEL_BLUE : mode === "propulsion" ? GEL_ORANGE : GEL_PURPLE} />
+            {mode === "repulsion" ? "REPULSION GEL (JUMP BOOSTER)" : mode === "propulsion" ? "PROPULSION GEL (SPEED BOOSTER)" : "COMBO STUNT"}
           </span>
           <span style={{ color: "var(--concrete-gray)" }}>
-            VELOCITY: <strong className="text-white">{telemetry.velocity.toFixed(1)} km/h</strong>
+            VELOCITY: <strong className="text-white">{telemetry.velocity.toFixed(1)} KM/H</strong>
           </span>
           <span style={{ color: "var(--concrete-gray)" }}>
-            ALTITUDE: <strong className="text-white">{telemetry.altitude.toFixed(1)} m</strong>
+            ALTITUDE: <strong className="text-white">{telemetry.altitude.toFixed(1)} M</strong>
           </span>
           <span style={{ color: "var(--concrete-gray)" }}>
             FRICTION: <strong className="text-white">{telemetry.friction.toFixed(3)} µ</strong>
@@ -781,19 +739,34 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         <div className="flex items-center gap-2">
           <button
             onClick={triggerAction}
-            className="px-3 py-1 text-xs font-bold tracking-wider rounded transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold tracking-wider rounded transition-all"
             style={{
               fontFamily: "var(--font-mono)",
-              background: mode === "repulsion" ? GEL_BLUE : GEL_ORANGE,
+              background: mode === "repulsion" ? GEL_BLUE : mode === "propulsion" ? GEL_ORANGE : GEL_PURPLE,
               color: "#050508",
               cursor: "pointer",
             }}
           >
-            {mode === "repulsion" ? "▲ DROP & JUMP BOOST" : mode === "propulsion" ? "▶ IGNITE SPEED RUN" : "⚡ LAUNCH COMBO"}
+            {mode === "repulsion" ? (
+              <>
+                <JumpBoosterIcon size={12} color="#050508" />
+                DROP & JUMP BOOST
+              </>
+            ) : mode === "propulsion" ? (
+              <>
+                <SpeedBoosterIcon size={12} color="#050508" />
+                IGNITE SPEED RUN
+              </>
+            ) : (
+              <>
+                <ComboIcon size={12} color="#050508" />
+                LAUNCH COMBO
+              </>
+            )}
           </button>
           <button
             onClick={() => resetSimulation(mode)}
-            className="px-3 py-1 text-xs tracking-wider border rounded transition-all"
+            className="inline-flex items-center gap-1 px-3 py-1 text-xs tracking-wider border rounded transition-all"
             style={{
               fontFamily: "var(--font-mono)",
               borderColor: "var(--border-subtle)",
@@ -802,6 +775,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
               cursor: "pointer",
             }}
           >
+            <ResetIcon size={11} color="var(--concrete-gray)" />
             RESET
           </button>
         </div>
@@ -823,13 +797,14 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
 
         {/* Live Status Message */}
         <div
-          className="absolute bottom-2 left-4 px-2 py-1 rounded"
+          className="absolute bottom-2 left-4 px-2.5 py-1 rounded"
           style={{
-            background: "rgba(5, 5, 8, 0.75)",
+            background: "rgba(5, 5, 8, 0.85)",
             fontFamily: "var(--font-mono)",
             fontSize: "10px",
             color: telemetry.targetReached ? "#FFFFFF" : "var(--concrete-gray)",
             border: "1px solid var(--border-subtle)",
+            letterSpacing: "0.06em",
           }}
         >
           {telemetry.status}

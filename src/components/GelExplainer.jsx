@@ -1,5 +1,6 @@
 import { useState } from "react"
 import GelInteractive from "./GelInteractive"
+import { JumpBoosterIcon, SpeedBoosterIcon, ComboIcon } from "./Icons"
 
 const GEL_BLUE = "#1E90FF"
 const GEL_ORANGE = "#FF7A1A"
@@ -62,17 +63,17 @@ export default function GelExplainer({ onInteraction }) {
         style={{ borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px" }}
       >
         {[
-          { id: "repulsion", label: "▲ BLUE GEL: JUMP BOOSTER", color: GEL_BLUE },
-          { id: "propulsion", label: "▶ ORANGE GEL: SPEED BOOSTER", color: GEL_ORANGE },
-          { id: "combo", label: "⚡ COMBO: SPEED + JUMP STUNT", color: GEL_PURPLE },
-        ].map(({ id, label, color }) => (
+          { id: "repulsion", label: "BLUE GEL: JUMP BOOSTER", icon: JumpBoosterIcon, color: GEL_BLUE },
+          { id: "propulsion", label: "ORANGE GEL: SPEED BOOSTER", icon: SpeedBoosterIcon, color: GEL_ORANGE },
+          { id: "combo", label: "COMBO: SPEED + JUMP STUNT", icon: ComboIcon, color: GEL_PURPLE },
+        ].map(({ id, label, icon: Icon, color }) => (
           <button
             key={id}
             onClick={() => {
               setActiveGel(id)
               onInteraction?.()
             }}
-            className="px-5 py-2.5 text-xs font-bold tracking-widest transition-all duration-150 rounded"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold tracking-widest transition-all duration-150 rounded"
             style={{
               fontFamily: "var(--font-mono)",
               color: activeGel === id ? "#0A0A0E" : color,
@@ -83,6 +84,7 @@ export default function GelExplainer({ onInteraction }) {
               boxShadow: activeGel === id ? `0 0 16px ${color}40` : "none",
             }}
           >
+            <Icon size={14} color={activeGel === id ? "#0A0A0E" : color} />
             {label}
           </button>
         ))}
@@ -112,7 +114,7 @@ export default function GelExplainer({ onInteraction }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
         {/* Repulsion panel (Jump Booster) */}
         <div
-          className="p-6 transition-all"
+          className="p-6 transition-all cursor-pointer"
           style={{
             border: `1px solid ${activeGel === "repulsion" ? GEL_BLUE : "var(--border-subtle)"}`,
             background: activeGel === "repulsion" ? "rgba(30, 144, 255, 0.04)" : "transparent",
@@ -123,7 +125,7 @@ export default function GelExplainer({ onInteraction }) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div
-                className="w-4 h-4 rounded-full"
+                className="w-4 h-4 rounded-full flex items-center justify-center"
                 style={{
                   background: GEL_BLUE,
                   boxShadow: `0 0 12px ${GEL_BLUE}`,
@@ -178,7 +180,7 @@ export default function GelExplainer({ onInteraction }) {
 
         {/* Propulsion panel (Speed Booster) */}
         <div
-          className="p-6 transition-all"
+          className="p-6 transition-all cursor-pointer"
           style={{
             border: `1px solid ${activeGel === "propulsion" ? GEL_ORANGE : "var(--border-subtle)"}`,
             background: activeGel === "propulsion" ? "rgba(255, 122, 26, 0.04)" : "transparent",
@@ -189,7 +191,7 @@ export default function GelExplainer({ onInteraction }) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div
-                className="w-4 h-4 rounded-full"
+                className="w-4 h-4 rounded-full flex items-center justify-center"
                 style={{
                   background: GEL_ORANGE,
                   boxShadow: `0 0 12px ${GEL_ORANGE}`,
