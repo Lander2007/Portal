@@ -1,0 +1,285 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500&family=Share+Tech+Mono&display=swap');
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+html,
+body,
+#root {
+  height: 100%;
+  background: var(--void-black);
+  color: var(--facility-white);
+  font-family: var(--font-body);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Hide scrollbar visually but keep functionality */
+::-webkit-scrollbar {
+  width: 2px;
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-mid);
+}
+
+/* Smooth scrolling unless reduced-motion */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Utility classes */
+.font-display { font-family: var(--font-display); }
+.font-mono { font-family: var(--font-mono); }
+
+/* Chamber section base */
+.chamber-section {
+  position: relative;
+  min-height: 100vh;
+  padding: var(--chamber-gap) clamp(16px, 6vw, 80px);
+}
+
+/* Scanline overlay effect */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Portal glow keyframe */
+@keyframes portalPulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+@keyframes coreFlash {
+  0% { opacity: 1; }
+  20% { opacity: 0.2; }
+  40% { opacity: 1; }
+  60% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+@keyframes travelPulse {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.5); }
+  30% { opacity: 1; transform: translateX(-50%) scale(1); }
+  70% { opacity: 1; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) scale(0.5); }
+}
+
+@keyframes expandPortal {
+  from { transform: scale(0.1) scaleX(1.8); opacity: 0; }
+  to { transform: scale(1) scaleX(1.8); opacity: 1; }
+}
+
+@keyframes particleFade {
+  0% { opacity: 1; transform: scale(1) translateY(0); }
+  100% { opacity: 0; transform: scale(0.3) translateY(-20px); }
+}
+
+/* Hero entrance animations */
+@keyframes heroReveal {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes heroLineReveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes scrollLinePulse {
+  0% { height: 0; opacity: 0; }
+  50% { height: 32px; opacity: 1; }
+  100% { height: 32px; opacity: 0.3; }
+}
+
+@keyframes scrollDot {
+  0% { top: 0; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes ctaArrowNudge {
+  from { transform: translateX(0); }
+  to { transform: translateX(4px); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Hero heading chamber text */
+.hero-heading-chamber {
+  background: linear-gradient(90deg, var(--portal-blue, #1E90FF), var(--portal-orange, #FF7A1A));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  display: inline-block;
+}
+
+/* Gradient text fill for CHAMBER heading */
+.hero-gradient-text {
+  background: linear-gradient(90deg, var(--portal-blue, #1E90FF), var(--portal-orange, #FF7A1A));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  display: inline-block;
+}
+
+.hero-heading-char {
+  display: inline-block;
+  animation: heroReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.hero-stroke-char {
+  display: inline-block;
+  animation: heroReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+/* Status dot pulse */
+.status-dot {
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+/* Scroll indicator */
+.scroll-indicator-line {
+  animation: scrollLinePulse 2s ease-in-out infinite;
+}
+
+.scroll-indicator-dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--concrete-gray);
+  animation: scrollDot 2s ease-in-out infinite;
+}
+
+/* CTA hover effects */
+.cta-primary {
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
+}
+.cta-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(30, 144, 255, 0.12), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+.cta-primary:hover {
+  background: rgba(30, 144, 255, 0.08);
+  box-shadow: 0 0 28px rgba(30, 144, 255, 0.3), inset 0 0 20px rgba(30, 144, 255, 0.05);
+  transform: translateY(-1px) scale(1.02);
+  border-color: var(--portal-blue);
+}
+.cta-primary:hover::before {
+  transform: translateX(100%);
+}
+.cta-primary:hover .cta-arrow {
+  animation: ctaArrowNudge 0.3s ease forwards;
+}
+.cta-primary:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.cta-secondary {
+  position: relative;
+  overflow: hidden;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.cta-secondary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+.cta-secondary:hover {
+  color: var(--facility-white) !important;
+  border-color: var(--border-mid) !important;
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.04);
+}
+.cta-secondary:hover::before {
+  transform: translateX(100%);
+}
+.cta-secondary:active {
+  transform: translateY(0);
+}
+
+.cta-secondary-orange {
+  position: relative;
+  overflow: hidden;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.cta-secondary-orange::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 122, 26, 0.12), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+.cta-secondary-orange:hover {
+  color: var(--facility-white) !important;
+  border-color: var(--portal-orange) !important;
+  background: rgba(255, 122, 26, 0.08);
+  box-shadow: 0 0 28px rgba(255, 122, 26, 0.25), inset 0 0 20px rgba(255, 122, 26, 0.05);
+  transform: translateY(-1px) scale(1.02);
+}
+.cta-secondary-orange:hover::before {
+  transform: translateX(100%);
+}
+.cta-secondary-orange:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* Hazard stripe divider */
+.hazard-stripe {
+  height: 3px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--signal-amber),
+    var(--signal-amber) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

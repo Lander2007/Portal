@@ -1,0 +1,30 @@
+:root {
+  --void-black: #0A0A0C;
+  --facility-white: #F2F2EF;
+  --concrete-gray: #8C8C87;
+  --portal-blue: #1E90FF;
+  --portal-orange: #FF7A1A;
+  --gel-blue: #2FA8FF;
+  --gel-orange: #FF9838;
+
+  /* Secondary accent tones */
+  --portal-blue-dim: #0F4A80;
+  --portal-orange-dim: #8C4310;
+  --signal-amber: #D9A441;
+  --panel-cyan: #3AA6A6;
+
+  /* Semantic tokens */
+  --background: var(--void-black);
+  --foreground: var(--facility-white);
+  --muted: var(--concrete-gray);
+  --border-subtle: rgba(242, 242, 239, 0.08);
+  --border-mid: rgba(242, 242, 239, 0.15);
+
+  /* Typography */
+  --font-display: "Rajdhani", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "Share Tech Mono", monospace;
+
+  /* Spacing scale */
+  --chamber-gap: clamp(80px, 12vw, 160px);
+}
