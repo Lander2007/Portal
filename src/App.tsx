@@ -670,13 +670,23 @@ export default function App() {
         "chamber-04",
         "chamber-05",
         "chamber-06",
-        "chamber-final",
+        "chamber-07",
       ]
-      for (let i = sections.length - 1; i >= 0; i--) {
-        const el = document.getElementById(sections[i])
-        if (el && el.getBoundingClientRect().top <= window.innerHeight * 0.4) {
-          setCurrentChamber(sections[i].replace("chamber-", ""))
-          break
+      const isAtBottom =
+        window.innerHeight + scrollY >=
+        document.documentElement.scrollHeight - 60
+      if (isAtBottom) {
+        setCurrentChamber("07")
+      } else {
+        for (let i = sections.length - 1; i >= 0; i--) {
+          const el = document.getElementById(sections[i])
+          if (
+            el &&
+            el.getBoundingClientRect().top <= window.innerHeight * 0.45
+          ) {
+            setCurrentChamber(sections[i].replace("chamber-", ""))
+            break
+          }
         }
       }
 

@@ -9,10 +9,10 @@ const CHAMBERS = [
   { id: "04", label: "THE FACILITY", href: "#chamber-04" },
   { id: "05", label: "RECORDS", href: "#chamber-05" },
   { id: "06", label: "EXIT", href: "#chamber-06" },
-  { id: "final", label: "DEBRIEF", href: "#chamber-final" },
+  { id: "07", label: "FINAL TEST", href: "#chamber-07" },
 ]
 
-const TOTAL_CHAMBERS = CHAMBERS.length
+const MAX_CHAMBER = "07"
 
 export default function Nav({ scrollProgress = 0, currentChamber = "00" }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -68,7 +68,7 @@ export default function Nav({ scrollProgress = 0, currentChamber = "00" }) {
               letterSpacing: "0.08em",
             }}
           >
-            / {String(TOTAL_CHAMBERS).padStart(2, "0")}
+            / {MAX_CHAMBER}
           </span>
         </div>
 
