@@ -23,6 +23,12 @@ export default defineConfig(({ mode }) => {
     base: process.env.FIGMA_PUBLIC_URL
       ? `${process.env.FIGMA_PUBLIC_URL}/`
       : "/",
+    define: {
+      __BUNDLED_DEV__: false,
+    },
+    experimental: {
+      bundledDev: false,
+    },
     build: {
       sourcemap: emitSourcemaps ? "inline" : false,
       minify: !emitSourcemaps,
