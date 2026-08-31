@@ -20,7 +20,7 @@ logs/
 /.opencode-skills/
 /.agents
 /.claude
-/.figma
+
 /.playwright-mcp
 AGENTS.md
 CLAUDE.md
