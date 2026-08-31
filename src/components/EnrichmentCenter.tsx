@@ -1,7 +1,7 @@
 export default function EnrichmentCenter() {
   return (
     <section
-      id="chamber-04"
+      id="chamber-05"
       className="chamber-section"
       style={{ background: "var(--void-black)", position: "relative" }}
     >
@@ -22,7 +22,7 @@ export default function EnrichmentCenter() {
               fontFamily: "var(--font-mono)",
             }}
           >
-            [04] THE FACILITY
+            [05] THE FACILITY
           </div>
           <h2
             className="text-5xl md:text-7xl font-bold tracking-tight mb-6"

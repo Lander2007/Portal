@@ -6,8 +6,8 @@ const CHAMBERS = [
   { id: "01", label: "THE DEVICE", href: "#chamber-01" },
   { id: "02", label: "MATERIALS", href: "#chamber-02" },
   { id: "03", label: "SCIENCE", href: "#chamber-03" },
-  { id: "04", label: "THE FACILITY", href: "#chamber-04" },
-  { id: "05", label: "RECORDS", href: "#chamber-05" },
+  { id: "04", label: "RECORDS", href: "#chamber-04" },
+  { id: "05", label: "THE FACILITY", href: "#chamber-05" },
   { id: "06", label: "TEST COMPLETE", href: "#chamber-06" },
 ]
 
