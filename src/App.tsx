@@ -670,13 +670,12 @@ export default function App() {
         "chamber-04",
         "chamber-05",
         "chamber-06",
-        "chamber-07",
       ]
       const isAtBottom =
         window.innerHeight + scrollY >=
         document.documentElement.scrollHeight - 60
       if (isAtBottom) {
-        setCurrentChamber("07")
+        setCurrentChamber("06")
       } else {
         for (let i = sections.length - 1; i >= 0; i--) {
           const el = document.getElementById(sections[i])

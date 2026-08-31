@@ -8,11 +8,10 @@ const CHAMBERS = [
   { id: "03", label: "SCIENCE", href: "#chamber-03" },
   { id: "04", label: "THE FACILITY", href: "#chamber-04" },
   { id: "05", label: "RECORDS", href: "#chamber-05" },
-  { id: "06", label: "EXIT", href: "#chamber-06" },
-  { id: "07", label: "FINAL TEST", href: "#chamber-07" },
+  { id: "06", label: "TEST COMPLETE", href: "#chamber-06" },
 ]
 
-const MAX_CHAMBER = "07"
+const MAX_CHAMBER = "06"
 
 export default function Nav({ scrollProgress = 0, currentChamber = "00" }) {
   const [menuOpen, setMenuOpen] = useState(false)

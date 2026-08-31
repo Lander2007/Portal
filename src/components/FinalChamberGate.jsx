@@ -6,7 +6,7 @@ export default function FinalChamberGate({ onEnter }) {
 
   return (
     <section
-      id="chamber-07"
+      id="chamber-final-gate"
       className="chamber-section relative flex flex-col items-center justify-center text-center"
       style={{ minHeight: "60vh", background: "var(--void-black)" }}
     >
@@ -27,7 +27,7 @@ export default function FinalChamberGate({ onEnter }) {
             fontFamily: "var(--font-mono)",
           }}
         >
-          [07] FINAL TEST — ONE TEST REMAINS
+          ONE TEST REMAINS
         </div>
 
         <button
