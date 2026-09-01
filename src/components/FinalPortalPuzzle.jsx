@@ -117,6 +117,7 @@ export default function FinalPortalPuzzle({
         if (nearSwitch && !s.switchActivated) {
           s.switchActivated = true
           s.doorAnimStart = performance.now()
+          window.dispatchEvent(new CustomEvent("audio:switch-activate"))
           // Spawn celebration particles at switch
           for (let i = 0; i < 16; i++) {
             const angle = (i / 16) * Math.PI * 2
@@ -160,6 +161,9 @@ export default function FinalPortalPuzzle({
       if (e.button === 0) {
         s.bluePortal = { ...pos }
         s.firingColor = "orange"
+        window.dispatchEvent(
+          new CustomEvent("portal-fired", { detail: { color: "blue" } }),
+        )
         // Spawn fire ripple particles
         for (let i = 0; i < 10; i++) {
           const angle = Math.random() * Math.PI * 2
@@ -176,6 +180,9 @@ export default function FinalPortalPuzzle({
       } else if (e.button === 2) {
         s.orangePortal = { ...pos }
         s.firingColor = "blue"
+        window.dispatchEvent(
+          new CustomEvent("portal-fired", { detail: { color: "orange" } }),
+        )
         for (let i = 0; i < 10; i++) {
           const angle = Math.random() * Math.PI * 2
           s.particles.push({
@@ -314,6 +321,7 @@ export default function FinalPortalPuzzle({
           s.teleportCooldown = 0.5
           s.teleportFlashTime = now
           s.teleportFlashPos = { from: { ...s.bluePortal }, to: { ...s.orangePortal } }
+          window.dispatchEvent(new CustomEvent("audio:portal-crossing"))
 
           // Spawn warp particles at entry and exit
           for (let i = 0; i < 14; i++) {
@@ -350,6 +358,7 @@ export default function FinalPortalPuzzle({
           s.teleportCooldown = 0.5
           s.teleportFlashTime = now
           s.teleportFlashPos = { from: { ...s.orangePortal }, to: { ...s.bluePortal } }
+          window.dispatchEvent(new CustomEvent("audio:portal-crossing"))
 
           for (let i = 0; i < 14; i++) {
             const a1 = Math.random() * Math.PI * 2
@@ -386,6 +395,9 @@ export default function FinalPortalPuzzle({
         if (elapsed < 200) {
           s.doorShudder = Math.sin(elapsed * 0.05) * 2 * (1 - elapsed / 200)
         } else {
+          if (s.doorShudder !== 0) {
+            window.dispatchEvent(new CustomEvent("audio:door-open"))
+          }
           s.doorShudder = 0
           s.doorOpen = clamp((elapsed - 200) / 700, 0, 1)
         }

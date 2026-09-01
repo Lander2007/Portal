@@ -203,6 +203,11 @@ export default function HeroPortalCanvas() {
       })
 
       startAnimationLoop()
+      window.dispatchEvent(
+        new CustomEvent("portal-fired", {
+          detail: { color: color === BLUE ? "blue" : "orange" },
+        }),
+      )
     }
 
     // ─── Input Handlers (Window-level with Section Bounding) ──────────────

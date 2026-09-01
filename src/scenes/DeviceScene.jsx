@@ -614,6 +614,9 @@ function SceneInner({ isDragging, onCoreColorChange, onInteraction }) {
       setParticleBurst({ color, pos: [-0.9, 0, 0] })
       setFirePulse((n) => n + 1)
       onInteraction?.()
+      window.dispatchEvent(
+        new CustomEvent("portal-fired", { detail: { color: type } }),
+      )
     },
     [onCoreColorChange, raycastToWall, onInteraction],
   )

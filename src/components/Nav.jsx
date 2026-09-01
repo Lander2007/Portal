@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { ApertureMenu } from "./Icons"
+import MuteToggle from "./MuteToggle"
+import CommentaryToggle from "./CommentaryToggle"
 
 const CHAMBERS = [
   { id: "00", label: "ENTRY", href: "#chamber-00" },
@@ -13,7 +15,12 @@ const CHAMBERS = [
 
 const MAX_CHAMBER = "06"
 
-export default function Nav({ scrollProgress = 0, currentChamber = "00" }) {
+export default function Nav({
+  scrollProgress = 0,
+  currentChamber = "00",
+  commentaryMode = false,
+  onCommentaryToggle,
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [reduced, setReduced] = useState(false)
 
@@ -91,19 +98,26 @@ export default function Nav({ scrollProgress = 0, currentChamber = "00" }) {
           />
         </div>
 
-        {/* Menu toggle */}
-        <button
-          className="pointer-events-auto flex items-center p-2 group"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Toggle navigation"
-          style={{ color: "var(--facility-white)" }}
-        >
-          <ApertureMenu
-            size={22}
-            color="var(--facility-white)"
-            open={menuOpen}
+        {/* Controls: Commentary + Mute + Menu */}
+        <div className="pointer-events-auto flex items-center gap-3">
+          <CommentaryToggle
+            active={commentaryMode}
+            onToggle={onCommentaryToggle}
           />
-        </button>
+          <MuteToggle />
+          <button
+            className="flex items-center p-2 group"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Toggle navigation"
+            style={{ color: "var(--facility-white)" }}
+          >
+            <ApertureMenu
+              size={22}
+              color="var(--facility-white)"
+              open={menuOpen}
+            />
+          </button>
+        </div>
       </nav>
 
       {/* Dropdown panel */}

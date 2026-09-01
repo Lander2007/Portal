@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import Nav from "./components/Nav"
 import PortalTransition from "./components/PortalTransition"
 import DeviceScene from "./scenes/DeviceScene"
@@ -18,6 +18,20 @@ import {
   KEY_SEQUENCE_COPY,
   CAKE_LINES,
 } from "./lib/easterEggs"
+import { getSubjectNumber } from "./lib/subjectNumber"
+import { getCommentaryLine } from "./lib/commentary"
+import {
+  playPortalFire,
+  playButtonPress,
+  playDoorOpen,
+  playPortalCrossing,
+  playSwitchActivate,
+  startAmbient,
+} from "./lib/audioManager"
+import CustomCursor from "./components/CustomCursor"
+import IdleDimmer from "./components/IdleDimmer"
+import PortalPeek from "./components/PortalPeek"
+import CommentaryNode from "./components/CommentaryNode"
 import { ArrowChevron, ScrollChevron, StatusDot } from "./components/Icons"
 
 const PORTAL_BLUE = "#1E90FF"
@@ -196,9 +210,11 @@ function CursorTrailButton({
 function ChamberEntry({
   onEnter,
   interactionCount,
+  commentaryMode,
 }: {
   onEnter: () => void
   interactionCount: number
+  commentaryMode: boolean
 }) {
   const [loaded, setLoaded] = useState(false)
   useEffect(() => {
@@ -255,6 +271,12 @@ function ChamberEntry({
             <StatusDot size={8} color="var(--portal-blue)" />
           </span>
           <span style={{ color: "var(--portal-blue)" }}> SYSTEMS NOMINAL</span>
+          <span
+            className="ml-4"
+            style={{ color: "var(--concrete-gray)", opacity: 0.6 }}
+          >
+            · SUBJECT #{useMemo(() => getSubjectNumber(), [])}
+          </span>
         </div>
 
         {/* Main title */}
@@ -403,7 +425,7 @@ function ChamberEntry({
       {/* Interaction counter */}
       {interactionCount > 0 && (
         <div
-          className="absolute top-6 right-6 z-20"
+          className="absolute top-20 right-6 z-20"
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: "10px",
@@ -428,12 +450,34 @@ function ChamberEntry({
         <div>SCROLL</div>
         <ScrollChevron size={10} color="var(--concrete-gray)" />
       </div>
+
+      {/* Portal-peek: glimpse the facility */}
+      <PortalPeek
+        targetId="chamber-05"
+        label="THE FACILITY"
+        position="bottom-left"
+        color="blue"
+      />
+
+      {/* Developer commentary node */}
+      {commentaryMode && (
+        <CommentaryNode
+          position="top-right"
+          note="The hero uses a layered canvas system: rings spawn on click, with a flash burst, outer/inner rings, radial glow, dark core, and orbiting particles — all driven by a single RAF loop that self-terminates when idle."
+        />
+      )}
     </section>
   )
 }
 
 // ─── Chamber [01] THE DEVICE ─────────────────────────────────────────────────
-function ChamberDevice({ onInteraction }: { onInteraction: () => void }) {
+function ChamberDevice({
+  onInteraction,
+  commentaryMode,
+}: {
+  onInteraction: () => void
+  commentaryMode: boolean
+}) {
   return (
     <section
       id="chamber-01"
@@ -593,6 +637,22 @@ function ChamberDevice({ onInteraction }: { onInteraction: () => void }) {
           }
         }
       `}</style>
+
+      {/* Portal-peek: glimpse the final chamber */}
+      <PortalPeek
+        targetId="chamber-final-gate"
+        label="FINAL CHAMBER"
+        position="bottom-right"
+        color="orange"
+      />
+
+      {/* Developer commentary node */}
+      {commentaryMode && (
+        <CommentaryNode
+          position="bottom-left"
+          note="The 3D portal gun is built entirely from Three.js primitives — cylinders, spheres, toruses. No imported models. The portal ellipses use GSAP for scale-in animation, which is the only GSAP usage in the entire codebase."
+        />
+      )}
     </section>
   )
 }
@@ -609,7 +669,15 @@ export default function App() {
   const [easterEggsFound, setEasterEggsFound] = useState(0)
   const [exitTransition, setExitTransition] = useState(false)
   const [showPuzzle, setShowPuzzle] = useState(false)
+  const [commentaryMode, setCommentaryMode] = useState(false)
+  const [pendingCommentary, setPendingCommentary] = useState<{
+    trigger: string
+    line: string
+  } | null>(null)
   const lastScrollY = useRef(0)
+  const commentaryLastShown = useRef({})
+  const commentaryFired = useRef(new Set())
+  const toastHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const incrementInteractions = useCallback(() => {
     setInteractionCount((n) => n + 1)
@@ -619,26 +687,69 @@ export default function App() {
     setEasterEggsFound((n) => n + 1)
   }, [])
 
+  const showCommentary = useCallback(
+    (trigger: string) => {
+      if (commentaryFired.current.has(trigger)) return
+      commentaryFired.current.add(trigger)
+      const line = getCommentaryLine(trigger, commentaryLastShown)
+      if (!line) return
+      setPendingCommentary({ trigger, line })
+    },
+    [],
+  )
+
+  // Process pending commentary when toast is clear
+  useEffect(() => {
+    if (!pendingCommentary) return
+    if (toast.visible) return // Wait for current toast to clear
+    const { line } = pendingCommentary
+    setPendingCommentary(null)
+    setToast({ visible: true, title: "FACILITY LOG", body: line })
+    if (toastHideTimer.current) clearTimeout(toastHideTimer.current)
+    toastHideTimer.current = setTimeout(() => {
+      setToast((prev) => {
+        if (prev.title === "FACILITY LOG") {
+          return { visible: false, title: "", body: "" }
+        }
+        return prev
+      })
+    }, 6000)
+  }, [pendingCommentary, toast.visible])
+
   const handleIntroComplete = useCallback(() => {
     setIntroComplete(true)
     setTransitionActive(true)
-  }, [])
+    // Fire commentary after a short delay so the transition plays first
+    setTimeout(() => {
+      showCommentary("introComplete")
+    }, 2000)
+  }, [showCommentary])
 
   const handleFinalExit = useCallback(() => {
     setExitTransition(true)
+    showCommentary("finalComplete")
     setTimeout(() => {
       setShowPuzzle(false)
       window.scrollTo({ top: 0, behavior: "smooth" })
-      setToast({
-        visible: true,
-        title: "TEST SEQUENCE CONCLUDED",
-        body: "Test subject clearance verified. Returning to facility entrance.",
+      setToast((prev) => {
+        // If commentary is still showing, let it finish; otherwise show exit toast
+        if (prev.visible && prev.title === "FACILITY LOG") return prev
+        return {
+          visible: true,
+          title: "TEST SEQUENCE CONCLUDED",
+          body: "Test subject clearance verified. Returning to facility entrance.",
+        }
       })
       setTimeout(() => {
-        setToast({ visible: false, title: "", body: "" })
+        setToast((prev) => {
+          if (prev.title === "TEST SEQUENCE CONCLUDED") {
+            return { visible: false, title: "", body: "" }
+          }
+          return prev
+        })
       }, 5000)
     }, 600)
-  }, [])
+  }, [showCommentary])
 
   // Lock body scrolling while in intro chamber
   useEffect(() => {
@@ -694,10 +805,15 @@ export default function App() {
       trackScrollReversal(dir, (title: string, body: string) => {
         setToast({ visible: true, title, body })
         incrementEasterEggs()
-        setTimeout(
-          () => setToast({ visible: false, title: "", body: "" }),
-          5000,
-        )
+        showCommentary("firstEasterEgg")
+        setTimeout(() => {
+          setToast((prev) => {
+            if (prev.title === title) {
+              return { visible: false, title: "", body: "" }
+            }
+            return prev
+          })
+        }, 5000)
       })
       lastScrollY.current = scrollY
     }
@@ -712,9 +828,59 @@ export default function App() {
     const cleanup = initKeySequence(() => {
       setKeyModal(true)
       incrementEasterEggs()
+      showCommentary("firstEasterEgg")
     })
     return cleanup
-  }, [incrementEasterEggs])
+  }, [incrementEasterEggs, showCommentary])
+
+  // Commentary: first portal fired
+  useEffect(() => {
+    const onFirstPortal = () => showCommentary("firstPortal")
+    window.addEventListener("portal-fired", onFirstPortal)
+    return () => window.removeEventListener("portal-fired", onFirstPortal)
+  }, [showCommentary])
+
+  // Commentary: click spam detection
+  useEffect(() => {
+    const clicks: number[] = []
+    const onClick = () => {
+      const now = Date.now()
+      clicks.push(now)
+      // Keep only clicks from last 2 seconds
+      while (clicks.length > 0 && clicks[0] < now - 2000) clicks.shift()
+      if (clicks.length >= 6) {
+        showCommentary("clickSpam")
+        clicks.length = 0
+      }
+    }
+    window.addEventListener("mousedown", onClick)
+    return () => window.removeEventListener("mousedown", onClick)
+  }, [showCommentary])
+
+  // Audio: play portal fire SFX on portal-fired events
+  useEffect(() => {
+    const onPortalFired = (e: Event) => {
+      const color = (e as CustomEvent).detail?.color || "blue"
+      playPortalFire(color)
+    }
+    const onButtonPress = () => playButtonPress()
+    const onDoorOpen = () => playDoorOpen()
+    const onPortalCrossing = () => playPortalCrossing()
+    const onSwitchActivate = () => playSwitchActivate()
+
+    window.addEventListener("portal-fired", onPortalFired)
+    window.addEventListener("audio:button-press", onButtonPress)
+    window.addEventListener("audio:door-open", onDoorOpen)
+    window.addEventListener("audio:portal-crossing", onPortalCrossing)
+    window.addEventListener("audio:switch-activate", onSwitchActivate)
+    return () => {
+      window.removeEventListener("portal-fired", onPortalFired)
+      window.removeEventListener("audio:button-press", onButtonPress)
+      window.removeEventListener("audio:door-open", onDoorOpen)
+      window.removeEventListener("audio:portal-crossing", onPortalCrossing)
+      window.removeEventListener("audio:switch-activate", onSwitchActivate)
+    }
+  }, [])
 
   return (
     <div
@@ -724,11 +890,22 @@ export default function App() {
         minHeight: "100vh",
       }}
     >
+      {/* Custom cursor (site-wide, disabled on touch devices) */}
+      <CustomCursor />
+
+      {/* Idle power conservation dimmer */}
+      <IdleDimmer active={introComplete} />
+
       {/* Intro chamber (loading gate) */}
       {!introComplete && <IntroChamber onComplete={handleIntroComplete} />}
 
       {introComplete && !showPuzzle && (
-        <Nav scrollProgress={scrollProgress} currentChamber={currentChamber} />
+        <Nav
+          scrollProgress={scrollProgress}
+          currentChamber={currentChamber}
+          commentaryMode={commentaryMode}
+          onCommentaryToggle={() => setCommentaryMode((v) => !v)}
+        />
       )}
 
       {/* Portal transition overlay */}
@@ -747,11 +924,28 @@ export default function App() {
       <ChamberEntry
         onEnter={() => setTransitionActive(true)}
         interactionCount={interactionCount}
+        commentaryMode={commentaryMode}
       />
       <div className="hazard-stripe" />
-      <ChamberDevice onInteraction={incrementInteractions} />
+      <ChamberDevice
+        onInteraction={incrementInteractions}
+        commentaryMode={commentaryMode}
+      />
       <div className="hazard-stripe" />
-      <GelExplainer onInteraction={incrementInteractions} />
+      <GelExplainer
+        onInteraction={() => {
+          incrementInteractions()
+          showCommentary("gelInteraction")
+        }}
+      />
+      {commentaryMode && (
+        <div className="relative" style={{ height: 0 }}>
+          <CommentaryNode
+            position="top-right"
+            note="The gel physics sim runs a full gravity/bounce engine on a 2D canvas. Repulsion gel converts downward velocity to upward bounce; propulsion gel applies zero-friction acceleration. All in ~800 lines of vanilla canvas math."
+          />
+        </div>
+      )}
       <div className="hazard-stripe" />
       <PortalConcept />
       <div className="hazard-stripe" />

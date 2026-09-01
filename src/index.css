@@ -123,6 +123,35 @@ body,
   to { transform: translateX(4px); }
 }
 
+/* Portal-peek animations */
+@keyframes portalPeekSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes portalPeekSpinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes portalPeekParticle {
+  from {
+    transform: rotate(0deg) translateX(10px) rotate(0deg);
+    opacity: 0;
+  }
+  20% { opacity: 0.6; }
+  80% { opacity: 0.6; }
+  to {
+    transform: rotate(360deg) translateX(10px) rotate(-360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes portalPeekSwirl {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

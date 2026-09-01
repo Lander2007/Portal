@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { getSubjectNumber } from "../lib/subjectNumber"
 
 // ─── Stat definitions ─────────────────────────────────────────────────────────
 // Each stat maps an interaction count range to a facility-voice label.
@@ -22,6 +23,7 @@ export default function DebriefPanel({
   easterEggsFound = 0,
 }) {
   const [revealed, setRevealed] = useState(false)
+  const [subjectNum] = useState(() => getSubjectNumber())
 
   useEffect(() => {
     const t = setTimeout(() => setRevealed(true), 300)
@@ -59,10 +61,23 @@ export default function DebriefPanel({
     >
       {/* Header */}
       <div
-        className="text-xs mb-6 tracking-widest text-center"
+        className="text-xs mb-3 tracking-widest text-center"
         style={{ color: "var(--concrete-gray)" }}
       >
         ═══ POST-TEST DEBRIEF ═══
+      </div>
+
+      {/* Subject ID */}
+      <div
+        className="text-center mb-6 text-sm tracking-widest"
+        style={{
+          color: "var(--facility-white)",
+          fontFamily: "var(--font-mono)",
+          opacity: revealed ? 1 : 0,
+          transition: "opacity 0.5s ease 0.2s",
+        }}
+      >
+        Subject #{subjectNum} — testing complete.
       </div>
 
       {/* Stats grid */}

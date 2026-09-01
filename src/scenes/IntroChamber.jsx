@@ -282,6 +282,7 @@ export default function IntroChamber({ onComplete }) {
           s.cubeOnButton = true
           s.doorAnimStart = now
           s.buttonPressAnim = 0.01
+          window.dispatchEvent(new CustomEvent("audio:button-press"))
         }
       }
 
@@ -292,6 +293,10 @@ export default function IntroChamber({ onComplete }) {
           // Shudder phase
           s.doorShudder = Math.sin(elapsed * 0.05) * 2 * (1 - elapsed / 200)
         } else {
+          if (s.doorShudder !== 0) {
+            // Just started opening
+            window.dispatchEvent(new CustomEvent("audio:door-open"))
+          }
           s.doorShudder = 0
           const openElapsed = elapsed - 200
           s.doorOpen = clamp(openElapsed / 700, 0, 1)
