@@ -43,6 +43,20 @@ const COMMENTARY = {
     "Final chamber cleared. Cake distribution is still being processed.",
     "The facility thanks you for your participation. No refunds.",
   ],
+
+  // First gel+portal combo through the Training Grounds momentum gate
+  trainingCombo: [
+    "Gel-portal combination detected. The facility did not authorize this synergy.",
+    "Improvised momentum routing logged. Please file Form 12-B for unauthorized ingenuity.",
+    "The training room was not designed for that. The facility is revising the definition of 'designed'.",
+  ],
+
+  // Discovering the hidden Vault
+  vaultFound: [
+    "This chamber does not exist. You were never here.",
+    "Unauthorized area accessed. The facility denies everything.",
+    "How did you find this? The facility is asking for a friend.",
+  ],
 }
 
 // Pick a random line from a pool, avoiding the last-shown line for that trigger

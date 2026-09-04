@@ -60,7 +60,7 @@ export default function FacilityQuotes() {
 
   return (
     <section
-      id="chamber-04"
+      id="chamber-05"
       className="chamber-section"
       style={{ background: "rgba(8, 8, 12, 0.98)", position: "relative" }}
     >
@@ -80,7 +80,7 @@ export default function FacilityQuotes() {
             fontFamily: "var(--font-mono)",
           }}
         >
-          [04] FACILITY RECORDS
+          [05] FACILITY RECORDS
         </div>
         <h2
           className="text-5xl md:text-7xl font-bold tracking-tight mb-6"

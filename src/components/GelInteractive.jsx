@@ -5,6 +5,35 @@ const GEL_BLUE = "#1E90FF"
 const GEL_ORANGE = "#FF7A1A"
 const GEL_PURPLE = "#A855F7"
 
+// ─── Juice helpers ──────────────────────────────────────────────────────────
+function modeColor(mode) {
+  if (mode === "propulsion") return GEL_ORANGE
+  if (mode === "combo") return GEL_PURPLE
+  return GEL_BLUE
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace("#", "")
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  }
+}
+
+function mixHex(a, b, t) {
+  const ca = hexToRgb(a)
+  const cb = hexToRgb(b)
+  const r = Math.round(ca.r + (cb.r - ca.r) * t)
+  const g = Math.round(ca.g + (cb.g - ca.g) * t)
+  const bl = Math.round(ca.b + (cb.b - ca.b) * t)
+  return `rgb(${r},${g},${bl})`
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3)
+}
+
 // Sound synthesis using Web Audio API
 function playSound(type) {
   try {
@@ -65,6 +94,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
   const canvasRef = useRef(null)
   const animRef = useRef(0)
   const soundEnabled = useRef(true)
+  const reducedRef = useRef(false)
 
   // Simulation state
   const stateRef = useRef({
@@ -80,12 +110,29 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
     jumpCount: 0,
     speedFactor: 1,
     particles: [],
-    speedLines: [],
+    trail: [],
     shockwaves: [],
     statusText: "READY FOR LAUNCH",
     targetHit: false,
     comboStage: 0,
+    // ── Juice state ──
+    squash: 1, // 1 = neutral; <1 squashed, >1 stretched (volume-preserving)
+    prevVy: 0, // vertical velocity last frame (arc-peak detection)
+    coatTimer: 0, // gel-coat glow after launch (1 → 0)
+    settleT: -1, // settle compress-and-release progress (-1 = inactive)
+    restFrames: 0, // consecutive low-speed frames (rest detection)
+    spawnT: 1, // mode-switch ease progress (1 = settled)
+    spawnFrom: null,
+    spawnTo: null,
+    colorFrom: GEL_BLUE,
+    colorTo: GEL_BLUE,
+    shake: 0, // container shake magnitude (px)
+    reduced: false,
   })
+
+  // Raw per-frame physics values (written by the RAF loop, never rendered).
+  const telemetryRaw = useRef({ velocity: 0, altitude: 0 })
+  const statusSyncRef = useRef({ status: "", targetReached: false })
 
   const [telemetry, setTelemetry] = useState({
     velocity: 0,
@@ -96,45 +143,138 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
     targetReached: false,
   })
 
-  // Sync mode changes
+  // Track prefers-reduced-motion (shake + squash are gated on this)
   useEffect(() => {
-    stateRef.current.mode = mode
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    reducedRef.current = mq.matches
+    stateRef.current.reduced = mq.matches
+    const handler = (e) => {
+      reducedRef.current = e.matches
+      stateRef.current.reduced = e.matches
+    }
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
+
+  // Smooth-count the velocity/altitude readouts toward the raw physics values.
+  // Numbers glide instead of snapping, and React re-renders at ~10Hz rather
+  // than once per animation frame.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const raw = telemetryRaw.current
+      setTelemetry((prev) => {
+        const velocity = prev.velocity + (raw.velocity - prev.velocity) * 0.45
+        const altitude = prev.altitude + (raw.altitude - prev.altitude) * 0.45
+        if (
+          Math.abs(velocity - prev.velocity) < 0.005 &&
+          Math.abs(altitude - prev.altitude) < 0.005
+        ) {
+          return prev
+        }
+        return { ...prev, velocity, altitude }
+      })
+    }, 100)
+    return () => clearInterval(id)
+  }, [])
+
+  // Push status text / target flag to React only when they actually change.
+  const syncStatus = useCallback((s) => {
+    const sync = statusSyncRef.current
+    if (sync.status !== s.statusText || sync.targetReached !== s.targetHit) {
+      sync.status = s.statusText
+      sync.targetReached = s.targetHit
+      setTelemetry((prev) => ({
+        ...prev,
+        status: s.statusText,
+        targetReached: s.targetHit,
+        friction: s.mode === "propulsion" ? 0.0 : 0.85,
+        bounceFactor: s.mode === "repulsion" ? 3.2 : 0.3,
+      }))
+    }
+  }, [])
+
+  // Gel splatter burst + ripple at the launch point. Sells the idea that the
+  // subject is coated in a viscous substance, not following a physics curve.
+  const launchBurst = useCallback((s, color) => {
+    for (let i = 0; i < 14; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const spd = 1.5 + Math.random() * 4.5
+      s.particles.push({
+        x: s.x + (Math.random() - 0.5) * 10,
+        y: s.y + (Math.random() - 0.5) * 10,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd - 1.5,
+        r: Math.random() * 3.5 + 1.5,
+        color,
+        alpha: 1,
+        life: 0.7,
+      })
+    }
+    s.shockwaves.push({
+      x: s.x,
+      y: s.y,
+      r: 6,
+      maxR: 48,
+      alpha: 0.8,
+      color,
+    })
+    s.coatTimer = 1
+    // A fresh launch cancels any pending settle animation.
+    s.settleT = -1
+    s.restFrames = 0
+  }, [])
+
+  // Sync mode changes — eased gel-drip transition, never an instant snap.
+  useEffect(() => {
     resetSimulation(mode)
   }, [mode])
 
   const resetSimulation = useCallback((currentMode) => {
     const s = stateRef.current
+    // Capture the outgoing gel color BEFORE switching modes so the subject
+    // visibly drains the old color and refills with the new one.
+    const outgoingColor = modeColor(s.mode)
+    const from = { x: s.x, y: s.y }
+    let to
+    if (currentMode === "repulsion") {
+      to = { x: 100, y: 70, vx: 1.2, vy: 0 }
+      s.statusText = "DROP FROM HEIGHT TO TRIGGER SUPER JUMP"
+    } else if (currentMode === "propulsion") {
+      to = { x: 60, y: 210, vx: 0, vy: 0 }
+      s.statusText = "PRESS 'IGNITE SPEED RUN' FOR ZERO-FRICTION SPRINT"
+    } else {
+      to = { x: 50, y: 210, vx: 0, vy: 0 }
+      s.statusText = "COMBO: SPRINT ON ORANGE GEL -> LAUNCH ON BLUE RAMP"
+    }
+    // Ease from wherever the subject is to the new start position, draining
+    // the old gel color out and refilling with the new one on the way.
+    s.spawnFrom = from
+    s.spawnTo = to
+    s.colorFrom = outgoingColor
+    s.colorTo = modeColor(currentMode)
+    s.spawnT = 0
     s.mode = currentMode
     s.particles = []
-    s.speedLines = []
+    s.trail = []
     s.shockwaves = []
     s.targetHit = false
     s.comboStage = 0
-
-    if (currentMode === "repulsion") {
-      s.x = 100
-      s.y = 70
-      s.vx = 1.2
-      s.vy = 0
-      s.statusText = "DROP FROM HEIGHT TO TRIGGER SUPER JUMP"
-    } else if (currentMode === "propulsion") {
-      s.x = 60
-      s.y = 210
-      s.vx = 0
-      s.vy = 0
-      s.statusText = "PRESS 'IGNITE SPEED RUN' FOR ZERO-FRICTION SPRINT"
-    } else {
-      s.x = 50
-      s.y = 210
-      s.vx = 0
-      s.vy = 0
-      s.statusText = "COMBO: SPRINT ON ORANGE GEL -> LAUNCH ON BLUE RAMP"
-    }
-  }, [])
+    s.squash = 1
+    s.coatTimer = 0
+    s.settleT = -1
+    s.restFrames = 0
+    s.shake = 0
+    s.isDragging = false
+    syncStatus(s)
+  }, [syncStatus])
 
   const triggerAction = useCallback(() => {
     const s = stateRef.current
     onInteraction?.()
+    // A triggered launch is a real launch: full juice, no settle pending.
+    s.spawnT = 1
+    s.settleT = -1
+    s.restFrames = 0
 
     if (s.mode === "repulsion") {
       s.x = 220
@@ -143,6 +283,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
       s.vy = 2.0
       s.targetHit = false
       s.statusText = "FREEFALLING TOWARDS BLUE REPULSION GEL..."
+      launchBurst(s, GEL_BLUE)
     } else if (s.mode === "propulsion") {
       s.x = 60
       s.y = 210
@@ -150,6 +291,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
       s.vy = 0
       s.targetHit = false
       s.statusText = "SUPERSONIC ACCELERATION ENGAGED (µ = 0.000)"
+      launchBurst(s, GEL_ORANGE)
       if (soundEnabled.current) playSound("speed")
     } else {
       s.x = 50
@@ -159,9 +301,11 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
       s.comboStage = 1
       s.targetHit = false
       s.statusText = "ACCELERATING ACROSS ORANGE TRACK..."
+      launchBurst(s, GEL_ORANGE)
       if (soundEnabled.current) playSound("speed")
     }
-  }, [onInteraction])
+    syncStatus(s)
+  }, [onInteraction, launchBurst, syncStatus])
 
   // Canvas render and physics engine
   useEffect(() => {
@@ -204,6 +348,44 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
       // Hazard boundary
       ctx.fillStyle = "rgba(255, 122, 26, 0.08)"
       ctx.fillRect(0, H - 12, W, 12)
+
+      // ─── Container shake (felt, not seen: a few px, fast decay) ───
+      ctx.save()
+      if (s.shake > 0.05 && !s.reduced) {
+        ctx.translate(
+          (Math.random() - 0.5) * 2 * s.shake,
+          (Math.random() - 0.5) * 2 * s.shake,
+        )
+      }
+      s.shake = Math.max(0, s.shake - dt * 16)
+
+      // ─── Mode-switch spawn easing ───
+      let spawnEasing = false
+      if (s.spawnT < 1 && !s.isDragging) {
+        spawnEasing = true
+        s.spawnT = Math.min(1, s.spawnT + dt / 0.55)
+        const t = easeOutCubic(s.spawnT)
+        s.x = s.spawnFrom.x + (s.spawnTo.x - s.spawnFrom.x) * t
+        s.y = s.spawnFrom.y + (s.spawnTo.y - s.spawnFrom.y) * t
+        s.vx = 0
+        s.vy = 0
+        if (s.spawnT >= 1) {
+          s.vx = s.spawnTo.vx
+          s.vy = s.spawnTo.vy
+          // Arriving in a fresh coat of gel: a soft ripple on arrival.
+          s.shockwaves.push({
+            x: s.x,
+            y: s.y,
+            r: 5,
+            maxR: 40,
+            alpha: 0.6,
+            color: s.colorTo,
+          })
+          s.coatTimer = Math.max(s.coatTimer, 0.7)
+        }
+      }
+      const bodyColor =
+        s.spawnT < 1 ? mixHex(s.colorFrom, s.colorTo, easeOutCubic(s.spawnT)) : modeColor(s.mode)
 
       // ─── MODE 1: REPULSION GEL ───
       if (s.mode === "repulsion") {
@@ -294,7 +476,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.fillText("REPULSION GEL // VERTICAL JUMP ZONE", gelLeft + 15, floorY + 28)
 
         // Physics
-        if (!s.isDragging) {
+        if (!s.isDragging && !spawnEasing) {
           s.vy += 28.0 * dt
           s.x += s.vx
           s.y += s.vy
@@ -336,6 +518,12 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
               s.jumpCount++
               s.statusText = `SUPER JUMP BOOST FIRED // VELOCITY: ${Math.abs(s.vy * 3.5).toFixed(1)} M/S`
 
+              // Impact squash + shake scaled by inbound speed.
+              if (!s.reduced) {
+                s.squash = 0.58
+                if (inboundSpeed > 13) s.shake = Math.min(6, 2.5 + inboundSpeed * 0.18)
+              }
+
               if (soundEnabled.current) playSound("bounce")
 
               s.shockwaves.push({
@@ -363,7 +551,24 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
               s.vy = -Math.abs(s.vy) * 0.25
               s.vx *= 0.8
               if (Math.abs(s.vy) < 1.0) s.vy = 0
+              // Dull thud on bare concrete: a whisper of squash, no shake.
+              if (!s.reduced && Math.abs(s.prevVy) > 6) s.squash = 0.85
             }
+          }
+
+          // Rest detection: settled on the platform or dead floor.
+          const speed = Math.sqrt(s.vx * s.vx + s.vy * s.vy)
+          const resting =
+            (s.y === highPlatform.y - 18 || (s.y === floorY - 18 && Math.abs(s.vy) < 0.01)) &&
+            speed < 0.7
+          if (resting) {
+            s.restFrames++
+            if (s.restFrames === 25 && s.settleT === -1) {
+              s.settleT = 0
+              s.statusText = "SUBJECT AT REST — GEL COATING NOMINAL"
+            }
+          } else {
+            s.restFrames = 0
           }
         }
       }
@@ -445,7 +650,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         ctx.fillStyle = GEL_ORANGE
         ctx.fillText("PROPULSION GEL // ZERO-FRICTION RUNWAY", gelStartX + 10, trackY + 28)
 
-        if (!s.isDragging) {
+        if (!s.isDragging && !spawnEasing) {
           const isOnOrangeGel = s.x >= gelStartX && s.x <= gelEndX && s.y >= trackY - 24
 
           if (isOnOrangeGel) {
@@ -476,6 +681,9 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
             if (s.x >= speedGateX - 10 && !s.targetHit) {
               s.targetHit = true
               s.statusText = "SUPERSONIC SPEED GAP CLEARED // TARGET ACHIEVED"
+              // Gate smash: celebratory burst + a nudge of shake.
+              launchBurst(s, GEL_ORANGE)
+              if (!s.reduced) s.shake = Math.max(s.shake, 3)
               if (soundEnabled.current) playSound("success")
             }
           } else {
@@ -491,6 +699,17 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
             s.vx = 0
             s.vy = 0
             s.statusText = "INSUFFICIENT SPEED — REPOSITIONING TEST SUBJECT"
+          }
+
+          // Rest detection: rolled to a stop on the landing platform.
+          if (s.x >= landStartX && Math.abs(s.vx) < 0.45 && s.vy === 0) {
+            s.restFrames++
+            if (s.restFrames === 25 && s.settleT === -1) {
+              s.settleT = 0
+              s.statusText = "SUBJECT AT REST — GEL COATING NOMINAL"
+            }
+          } else {
+            s.restFrames = 0
           }
         }
       }
@@ -532,7 +751,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
           catwalkY - 12,
         )
 
-        if (!s.isDragging) {
+        if (!s.isDragging && !spawnEasing) {
           if (s.x >= orangeStartX && s.x <= orangeEndX) {
             s.vx += 30.0 * dt
             s.vx = Math.min(s.vx, 20.0)
@@ -540,6 +759,10 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
           } else if (s.x >= blueRampX && s.x <= blueRampX + 45 && s.y >= trackY - 35) {
             s.vy = -17.5
             s.vx = 11.0
+            if (!s.reduced) {
+              s.squash = 1.3 // launch stretch off the ramp
+              s.shake = Math.max(s.shake, 2.5)
+            }
             if (soundEnabled.current) playSound("bounce")
             s.statusText = "MOMENTUM REDIRECTED — LAUNCHING SKYWARD"
           } else {
@@ -562,6 +785,7 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
             if (!s.targetHit) {
               s.targetHit = true
               s.statusText = "PERFECT MOMENTUM CONVERSION ACHIEVED"
+              launchBurst(s, GEL_PURPLE)
               if (soundEnabled.current) playSound("success")
             }
           }
@@ -572,7 +796,55 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
             s.vx = 0
             s.vy = 0
           }
+
+          // Rest detection: parked on the catwalk.
+          if (s.y === catwalkY - 18 && Math.abs(s.vx) < 0.45) {
+            s.restFrames++
+            if (s.restFrames === 25 && s.settleT === -1) {
+              s.settleT = 0
+              s.statusText = "SUBJECT AT REST — GEL COATING NOMINAL"
+            }
+          } else if (s.y !== catwalkY - 18) {
+            s.restFrames = 0
+          }
         }
+      }
+
+      // ─── Squash & stretch spring ───
+      // Arc-peak stretch: vertical velocity flips from rising to falling.
+      if (!s.isDragging && !spawnEasing && !s.reduced) {
+        if (s.prevVy < -1 && s.vy >= -1 && s.mode !== "propulsion") {
+          s.squash = 1.3
+        }
+        // Fast glide stretches the subject slightly along its motion.
+        const glideSpeed = Math.sqrt(s.vx * s.vx + s.vy * s.vy)
+        if (s.mode === "propulsion" && glideSpeed > 12) {
+          s.squash += (1.14 - s.squash) * Math.min(1, dt * 6)
+        } else {
+          s.squash += (1 - s.squash) * Math.min(1, dt * 9)
+        }
+      }
+      s.prevVy = s.vy
+
+      // ─── Settle animation progress ───
+      let settleScale = 1
+      if (s.settleT >= 0) {
+        s.settleT = Math.min(1, s.settleT + dt / 0.4)
+        settleScale = 1 - Math.sin(s.settleT * Math.PI) * 0.16
+        if (s.settleT >= 1) s.settleT = -1
+      }
+
+      // ─── Gel-coat glow decay ───
+      if (s.coatTimer > 0) s.coatTimer = Math.max(0, s.coatTimer - dt * 1.4)
+
+      // ─── Motion trail history (tapered ribbon, not a uniform line) ───
+      const trailSpeed = Math.sqrt(s.vx * s.vx + s.vy * s.vy)
+      if (!s.isDragging && trailSpeed > 1.2) {
+        s.trail.push({ x: s.x, y: s.y - 6 })
+        if (s.trail.length > 26) s.trail.shift()
+      } else if (s.trail.length > 0) {
+        s.trail.shift()
+        if (trailSpeed < 0.4) s.trail.shift()
       }
 
       // ─── Render Shockwaves ───
@@ -606,34 +878,56 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
         if (p.alpha <= 0) s.particles.splice(i, 1)
       }
 
-      // ─── Render Speed Lines ───
-      const currentSpeed = Math.sqrt(s.vx * s.vx + s.vy * s.vy)
-      if (currentSpeed > 6.0) {
-        ctx.strokeStyle = s.mode === "propulsion" ? GEL_ORANGE : GEL_BLUE
-        ctx.lineWidth = 1.5
-        ctx.globalAlpha = Math.min(0.7, currentSpeed / 20.0)
-        for (let i = 0; i < 4; i++) {
-          const lx = s.x - s.vx * (i + 1) * 2
-          const ly = s.y - s.vy * (i + 1) * 2 + (i - 2) * 4
+      // ─── Render Tapered Gradient Trail ───
+      // Brighter near the subject, fading to transparent; width tapers
+      // toward the tail.
+      if (s.trail.length > 1) {
+        ctx.lineCap = "round"
+        ctx.lineJoin = "round"
+        for (let i = 1; i < s.trail.length; i++) {
+          const t = i / s.trail.length
+          ctx.strokeStyle = bodyColor
+          ctx.globalAlpha = t * 0.45
+          ctx.lineWidth = 1 + t * 6
           ctx.beginPath()
-          ctx.moveTo(lx, ly)
-          ctx.lineTo(lx - s.vx * 3, ly - s.vy * 3)
+          ctx.moveTo(s.trail[i - 1].x, s.trail[i - 1].y)
+          ctx.lineTo(s.trail[i].x, s.trail[i].y)
           ctx.stroke()
         }
         ctx.globalAlpha = 1
       }
 
-      // ─── Render Aperture Test Subject ───
-      const bodyColor = s.mode === "propulsion" ? GEL_ORANGE : GEL_BLUE
+      // ─── Render Aperture Test Subject (squash & stretch) ───
+      const currentSpeed = Math.sqrt(s.vx * s.vx + s.vy * s.vy)
       const posX = s.x
       const posY = s.y
+      const sq = s.reduced ? 1 : s.squash * settleScale
+      const sqX = 1 / Math.sqrt(Math.max(0.3, sq))
 
+      // Gel-coat aura just after launch / arrival.
+      if (s.coatTimer > 0) {
+        const auraR = 20 + 14 * s.coatTimer
+        const aura = ctx.createRadialGradient(posX, posY - 6, 4, posX, posY - 6, auraR)
+        aura.addColorStop(0, bodyColor)
+        aura.addColorStop(1, "rgba(0,0,0,0)")
+        ctx.globalAlpha = 0.35 * s.coatTimer
+        ctx.beginPath()
+        ctx.arc(posX, posY - 6, auraR, 0, Math.PI * 2)
+        ctx.fillStyle = aura
+        ctx.fill()
+        ctx.globalAlpha = 1
+      }
+
+      ctx.save()
+      ctx.translate(posX, posY - 6)
+      ctx.scale(sqX, sq)
       ctx.shadowColor = bodyColor
       ctx.shadowBlur = 12
       ctx.fillStyle = bodyColor
       ctx.beginPath()
-      ctx.arc(posX, posY - 6, 8, 0, Math.PI * 2)
+      ctx.arc(0, 0, 8, 0, Math.PI * 2)
       ctx.fill()
+      ctx.restore()
       ctx.shadowBlur = 0
 
       ctx.strokeStyle = "#FFFFFF"
@@ -654,34 +948,40 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
       ctx.lineTo(posX + 10 + legAnim, posY + 14)
       ctx.stroke()
 
-      // Telemetry
-      setTelemetry({
+      ctx.restore() // container shake
+
+      // ─── Telemetry (raw values for the smooth-counted HUD) ───
+      telemetryRaw.current = {
         velocity: currentSpeed * 3.6,
         altitude: Math.max(0, (240 - posY) * 0.1),
-        friction: s.mode === "propulsion" ? 0.0 : 0.85,
-        bounceFactor: s.mode === "repulsion" ? 3.2 : 0.3,
-        status: s.statusText,
-        targetReached: s.targetHit,
-      })
+      }
+      syncStatus(s)
 
       animRef.current = requestAnimationFrame(render)
     }
 
     animRef.current = requestAnimationFrame(render)
     return () => cancelAnimationFrame(animRef.current)
-  }, [mode])
+  }, [mode, syncStatus])
 
   // Drag & Fling
   const onPointerDown = (e) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
-    stateRef.current.isDragging = true
-    stateRef.current.x = e.clientX - rect.left
-    stateRef.current.y = e.clientY - rect.top
-    stateRef.current.vx = 0
-    stateRef.current.vy = 0
-    stateRef.current.statusText = "DRAGGING SUBJECT — RELEASE TO LAUNCH"
+    const s = stateRef.current
+    // Grabbing the subject cancels any in-flight mode-switch glide.
+    s.spawnT = 1
+    s.isDragging = true
+    s.x = e.clientX - rect.left
+    s.y = e.clientY - rect.top
+    s.vx = 0
+    s.vy = 0
+    s.trail = []
+    s.settleT = -1
+    s.restFrames = 0
+    s.statusText = "DRAGGING SUBJECT — RELEASE TO LAUNCH"
+    syncStatus(s)
   }
 
   const onPointerMove = (e) => {
@@ -694,10 +994,13 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
   }
 
   const onPointerUp = () => {
-    if (!stateRef.current.isDragging) return
-    stateRef.current.isDragging = false
-    stateRef.current.vx = 2.0
-    stateRef.current.vy = 1.0
+    const s = stateRef.current
+    if (!s.isDragging) return
+    s.isDragging = false
+    s.vx = 2.0
+    s.vy = 1.0
+    // Releasing a drag is a launch: splatter + ripple + fresh coat.
+    launchBurst(s, modeColor(s.mode))
     onInteraction?.()
   }
 
@@ -726,10 +1029,10 @@ export default function GelInteractive({ mode = "repulsion", onInteraction }) {
             {mode === "repulsion" ? "REPULSION GEL (JUMP BOOSTER)" : mode === "propulsion" ? "PROPULSION GEL (SPEED BOOSTER)" : "COMBO STUNT"}
           </span>
           <span style={{ color: "var(--concrete-gray)" }}>
-            VELOCITY: <strong className="text-white">{telemetry.velocity.toFixed(1)} KM/H</strong>
+            VELOCITY: <strong className="text-white tabular-nums">{telemetry.velocity.toFixed(1)} KM/H</strong>
           </span>
           <span style={{ color: "var(--concrete-gray)" }}>
-            ALTITUDE: <strong className="text-white">{telemetry.altitude.toFixed(1)} M</strong>
+            ALTITUDE: <strong className="text-white tabular-nums">{telemetry.altitude.toFixed(1)} M</strong>
           </span>
           <span style={{ color: "var(--concrete-gray)" }}>
             FRICTION: <strong className="text-white">{telemetry.friction.toFixed(3)} µ</strong>

@@ -3,6 +3,7 @@ import Nav from "./components/Nav"
 import PortalTransition from "./components/PortalTransition"
 import DeviceScene from "./scenes/DeviceScene"
 import GelExplainer from "./components/GelExplainer"
+import TrainingGrounds from "./components/TrainingGrounds"
 import PortalConcept from "./components/PortalConcept"
 import HeroPortalCanvas from "./components/HeroPortalCanvas"
 import FacilityQuotes from "./components/FacilityQuotes"
@@ -32,7 +33,9 @@ import CustomCursor from "./components/CustomCursor"
 import IdleDimmer from "./components/IdleDimmer"
 import PortalPeek from "./components/PortalPeek"
 import CommentaryNode from "./components/CommentaryNode"
+import Vault from "./components/Vault"
 import { ArrowChevron, ScrollChevron, StatusDot } from "./components/Icons"
+import { CHAMBER_SECTION_IDS, MAX_CHAMBER } from "./lib/chambers"
 
 const PORTAL_BLUE = "#1E90FF"
 const PORTAL_ORANGE = "#FF7A1A"
@@ -82,10 +85,12 @@ function KeySequenceModal({
   lines,
   visible,
   onClose,
+  onOpenVault,
 }: {
   lines: string[]
   visible: boolean
   onClose: () => void
+  onOpenVault?: () => void
 }) {
   if (!visible) return null
   return (
@@ -138,6 +143,31 @@ function KeySequenceModal({
         >
           [CLOSE TERMINAL]
         </button>
+        {/* Hidden trace: a faint signal for the curious. Leads to the Vault. */}
+        <div className="mt-6">
+          <button
+            className="tracking-widest"
+            style={{
+              color: "var(--concrete-gray)",
+              opacity: 0.35,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "9px",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "1"
+              e.currentTarget.style.color = "var(--portal-blue)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "0.35"
+              e.currentTarget.style.color = "var(--concrete-gray)"
+            }}
+            onClick={onOpenVault}
+          >
+            ··· signal detected ··· [trace it]
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -453,7 +483,7 @@ function ChamberEntry({
 
       {/* Portal-peek: glimpse the facility */}
       <PortalPeek
-        targetId="chamber-05"
+        targetId="chamber-06"
         label="THE FACILITY"
         position="bottom-left"
         color="blue"
@@ -670,6 +700,7 @@ export default function App() {
   const [exitTransition, setExitTransition] = useState(false)
   const [showPuzzle, setShowPuzzle] = useState(false)
   const [commentaryMode, setCommentaryMode] = useState(false)
+  const [showVault, setShowVault] = useState(false)
   const [pendingCommentary, setPendingCommentary] = useState<{
     trigger: string
     line: string
@@ -689,10 +720,17 @@ export default function App() {
 
   const showCommentary = useCallback(
     (trigger: string) => {
-      if (commentaryFired.current.has(trigger)) return
+      if (commentaryFired.current.has(trigger)) {
+        console.log(`[commentary] trigger "${trigger}" already fired, skipping`)
+        return
+      }
       commentaryFired.current.add(trigger)
       const line = getCommentaryLine(trigger, commentaryLastShown)
-      if (!line) return
+      if (!line) {
+        console.log(`[commentary] no line found for trigger "${trigger}"`)
+        return
+      }
+      console.log(`[commentary] queuing: "${trigger}" → "${line}"`)
       setPendingCommentary({ trigger, line })
     },
     [],
@@ -701,8 +739,12 @@ export default function App() {
   // Process pending commentary when toast is clear
   useEffect(() => {
     if (!pendingCommentary) return
-    if (toast.visible) return // Wait for current toast to clear
+    if (toast.visible) {
+      console.log("[commentary] toast busy, waiting...")
+      return
+    }
     const { line } = pendingCommentary
+    console.log(`[commentary] displaying: "${line}"`)
     setPendingCommentary(null)
     setToast({ visible: true, title: "FACILITY LOG", body: line })
     if (toastHideTimer.current) clearTimeout(toastHideTimer.current)
@@ -725,8 +767,14 @@ export default function App() {
     }, 2000)
   }, [showCommentary])
 
-  const handleFinalExit = useCallback(() => {
-    setExitTransition(true)
+  const openVault = useCallback(() => {
+    setKeyModal(false)
+    setShowVault(true)
+    incrementEasterEggs()
+    showCommentary("vaultFound")
+  }, [incrementEasterEggs, showCommentary])
+
+  const handleFinalExit = useCallback(() => {    setExitTransition(true)
     showCommentary("finalComplete")
     setTimeout(() => {
       setShowPuzzle(false)
@@ -772,21 +820,13 @@ export default function App() {
       const progress = maxScroll > 0 ? scrollY / maxScroll : 0
       setScrollProgress(progress)
 
-      // Determine current chamber
-      const sections = [
-        "chamber-00",
-        "chamber-01",
-        "chamber-02",
-        "chamber-03",
-        "chamber-04",
-        "chamber-05",
-        "chamber-06",
-      ]
+      // Determine current chamber (derived from the chamber registry)
+      const sections = CHAMBER_SECTION_IDS
       const isAtBottom =
         window.innerHeight + scrollY >=
         document.documentElement.scrollHeight - 60
       if (isAtBottom) {
-        setCurrentChamber("06")
+        setCurrentChamber(MAX_CHAMBER)
       } else {
         for (let i = sections.length - 1; i >= 0; i--) {
           const el = document.getElementById(sections[i])
@@ -835,7 +875,10 @@ export default function App() {
 
   // Commentary: first portal fired
   useEffect(() => {
-    const onFirstPortal = () => showCommentary("firstPortal")
+    const onFirstPortal = () => {
+      console.log("[commentary] portal-fired event received")
+      showCommentary("firstPortal")
+    }
     window.addEventListener("portal-fired", onFirstPortal)
     return () => window.removeEventListener("portal-fired", onFirstPortal)
   }, [showCommentary])
@@ -861,6 +904,7 @@ export default function App() {
   useEffect(() => {
     const onPortalFired = (e: Event) => {
       const color = (e as CustomEvent).detail?.color || "blue"
+      console.log(`[audio] portal-fired: ${color}`)
       playPortalFire(color)
     }
     const onButtonPress = () => playButtonPress()
@@ -947,6 +991,24 @@ export default function App() {
         </div>
       )}
       <div className="hazard-stripe" />
+      <TrainingGrounds
+        onInteraction={() => {
+          incrementInteractions()
+        }}
+        onComboReward={() => {
+          incrementInteractions()
+          showCommentary("trainingCombo")
+        }}
+      />
+      {commentaryMode && (
+        <div className="relative" style={{ height: 0 }}>
+          <CommentaryNode
+            position="top-right"
+            note="Training Grounds is the first room where portals preserve momentum: your exit velocity equals your entry velocity. Gel speed in, gate speed out. The gate threshold is tuned so walking and jumping can never satisfy it."
+          />
+        </div>
+      )}
+      <div className="hazard-stripe" />
       <PortalConcept />
       <div className="hazard-stripe" />
       <FacilityQuotes />
@@ -977,7 +1039,11 @@ export default function App() {
         lines={KEY_SEQUENCE_COPY}
         visible={keyModal}
         onClose={() => setKeyModal(false)}
+        onOpenVault={openVault}
       />
+
+      {/* The Vault — hidden chamber, never in the nav or counter */}
+      <Vault visible={showVault} onClose={() => setShowVault(false)} />
 
       {/* Mobile bottom spacer for nav bar */}
       <div className="h-12 md:hidden" />

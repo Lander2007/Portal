@@ -225,7 +225,7 @@ function PortalDiagram({ animated = true }) {
 export default function PortalConcept() {
   return (
     <section
-      id="chamber-03"
+      id="chamber-04"
       className="chamber-section"
       style={{ background: "rgba(14, 14, 20, 0.98)", position: "relative" }}
     >
@@ -246,7 +246,7 @@ export default function PortalConcept() {
             fontFamily: "var(--font-mono)",
           }}
         >
-          [03] SCIENCE
+          [04] SCIENCE
         </div>
         <h2
           className="text-5xl md:text-7xl font-bold tracking-tight mb-6"

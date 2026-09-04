@@ -23,7 +23,7 @@ export default function TestComplete({
 
   return (
     <section
-      id="chamber-06"
+      id="chamber-07"
       className="chamber-section flex flex-col items-center justify-center text-center"
       style={{
         minHeight: "100vh",

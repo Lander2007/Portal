@@ -6,11 +6,23 @@ let audioCtx = null
 let masterGain = null
 let ambientNode = null
 let ambientGain = null
-let muted = true
 const MUTED_KEY = "chamber-zero-muted"
 
+// Sync module state with localStorage on load
+let muted = true
+try {
+  const stored = localStorage.getItem(MUTED_KEY)
+  if (stored !== null) muted = stored === "true"
+} catch {}
+
 function ensureContext() {
-  if (audioCtx) return audioCtx
+  if (audioCtx) {
+    // Resume if suspended (browser autoplay policy)
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume()
+    }
+    return audioCtx
+  }
   audioCtx = new (window.AudioContext || window.webkitAudioContext)()
   masterGain = audioCtx.createGain()
   masterGain.gain.value = muted ? 0 : 0.5
@@ -32,6 +44,9 @@ export function setMuted(value) {
   try {
     localStorage.setItem(MUTED_KEY, String(value))
   } catch {}
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume()
+  }
   if (masterGain) {
     masterGain.gain.setTargetAtTime(value ? 0 : 0.5, audioCtx.currentTime, 0.05)
   }
@@ -45,8 +60,10 @@ export function setMuted(value) {
 }
 
 export function toggleMute() {
-  setMuted(!muted)
-  return muted
+  const newValue = !muted
+  console.log(`[audio] toggleMute: ${muted} → ${newValue}`)
+  setMuted(newValue)
+  return newValue
 }
 
 export function isMuted() {
@@ -105,6 +122,7 @@ export function stopAmbient() {
 
 // ─── SFX: Portal fire (whoosh) ────────────────────────────────────────────────
 export function playPortalFire(color = "blue") {
+  console.log(`[audio] playPortalFire called, muted=${muted}, color=${color}`)
   if (muted) return
   ensureContext()
 

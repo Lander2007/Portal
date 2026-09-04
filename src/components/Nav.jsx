@@ -2,18 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { ApertureMenu } from "./Icons"
 import MuteToggle from "./MuteToggle"
 import CommentaryToggle from "./CommentaryToggle"
-
-const CHAMBERS = [
-  { id: "00", label: "ENTRY", href: "#chamber-00" },
-  { id: "01", label: "THE DEVICE", href: "#chamber-01" },
-  { id: "02", label: "MATERIALS", href: "#chamber-02" },
-  { id: "03", label: "SCIENCE", href: "#chamber-03" },
-  { id: "04", label: "RECORDS", href: "#chamber-04" },
-  { id: "05", label: "THE FACILITY", href: "#chamber-05" },
-  { id: "06", label: "TEST COMPLETE", href: "#chamber-06" },
-]
-
-const MAX_CHAMBER = "06"
+import { CHAMBERS, MAX_CHAMBER } from "../lib/chambers"
 
 export default function Nav({
   scrollProgress = 0,
